@@ -1,12 +1,15 @@
 import JsonView from '@uiw/react-json-view';
 import CryptoJS from 'crypto-js';
 import { useState } from 'react';
+import Toast from './Toast';
+import './encryp-decrypt-tool.css';
 
 const EncryptDecryptTool = () => {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
   const [secretKey, setSecretKey] = useState('Generali@EDMAPI#');
   const [error, setError] = useState('');
+  const [showToast, setShowToast] = useState(false);
 
   const handleEncrypt = () => {
     try {
@@ -124,8 +127,23 @@ const EncryptDecryptTool = () => {
 
 
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(outputText);
+  const handleCopy = async () => {
+    try {
+      let textToCopy = outputText;
+      
+      // Nếu là JSON, format đẹp hơn
+      if (isValidJson(outputText)) {
+        textToCopy = JSON.stringify(JSON.parse(outputText), null, 2);
+      }
+      
+      await navigator.clipboard.writeText(textToCopy);
+      
+      // Hiển thị toast
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (err) {
+      console.error('Lỗi khi copy:', err);
+    }
   };
 
   const handleClear = () => {
@@ -145,27 +163,27 @@ const EncryptDecryptTool = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="encrypt-tool-container">
       <div className="w-full">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
+          <h1 className="header-title">
             🔐 Công cụ Mã hóa/Giải mã
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="header-subtitle">
             Sử dụng AES-256 để mã hóa và giải mã văn bản của bạn một cách an toàn
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid-layout">
           {/* Left Column - Input Form */}
-          <div className="bg-white shadow-xl rounded-xl p-8 border border-gray-200">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
+          <div className="config-card">
+            <h2 className="text-2xl font-semibold mb-6 flex-center">
               <span className="mr-2">⚙️</span>
               Cấu hình
             </h2>
             
             <div className="mb-6">
-              <label htmlFor="secretKey" className="block text-sm font-semibold text-gray-700 mb-3">
+              <label htmlFor="secretKey" className="block text-sm font-semibold mb-3">
                 🔑 Khóa bí mật
               </label>
               <div className="relative">
@@ -174,21 +192,21 @@ const EncryptDecryptTool = () => {
                   id="secretKey"
                   value={secretKey}
                   onChange={(e) => setSecretKey(e.target.value)}
-                  className="w-full px-4 py-4 pr-12 border-2 border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 bg-gradient-to-r from-white to-gray-50 hover:border-gray-400 text-sm md:text-base"
+                  className="secret-key-input"
                   placeholder="Nhập khóa bí mật của bạn..."
                 />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-4">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <div className="absolute inset-y-0 right-0 flex-center pr-4">
+                  <div className="status-indicator status-green"></div>
                 </div>
               </div>
-              <p className="mt-3 text-xs text-gray-500 flex items-center">
+              <p className="mt-3 text-xs flex-center">
                 <span className="mr-1">💡</span>
                 <span>Sử dụng cùng một khóa bí mật để mã hóa và giải mã dữ liệu</span>
               </p>
             </div>
 
             <div className="mb-6">
-              <label htmlFor="inputText" className="block text-sm font-semibold text-gray-700 mb-3">
+              <label htmlFor="inputText" className="block text-sm font-semibold mb-3">
                 📝 Văn bản đầu vào
               </label>
               <div className="relative">
@@ -197,39 +215,39 @@ const EncryptDecryptTool = () => {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   rows={10}
-                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 bg-gradient-to-br from-white to-gray-50 hover:border-gray-400 font-mono text-sm md:text-base resize-none"
+                  className="text-input rows-10"
                   placeholder="Nhập văn bản, JSON hoặc dữ liệu cần mã hóa/giải mã..."
                 />
                 <div className="absolute top-3 right-3">
                   {inputText && (
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    <div className={`format-badge ${
                       isValidJson(inputText) 
-                        ? 'bg-green-100 text-green-700 border border-green-200' 
-                        : 'bg-blue-100 text-blue-700 border border-blue-200'
+                        ? 'format-badge-json' 
+                        : 'format-badge-text'
                     }`}>
                       {isValidJson(inputText) ? '✓ JSON' : '📄 Text'}
                     </div>
                   )}
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-500">
-                <span className="flex items-center">
-                  <span className="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
+              <div className="mt-3 flex-wrap gap-2 text-xs flex">
+                <span className="flex-center">
+                  <span className="status-indicator status-green"></span>
                   Hỗ trợ JSON format
                 </span>
-                <span className="flex items-center">
-                  <span className="w-2 h-2 bg-blue-400 rounded-full mr-1"></span>
+                <span className="flex-center">
+                  <span className="status-indicator status-blue"></span>
                   Plain text
                 </span>
-                <span className="flex items-center">
-                  <span className="w-2 h-2 bg-purple-400 rounded-full mr-1"></span>
+                <span className="flex-center">
+                  <span className="status-indicator status-purple"></span>
                   Base64 encoded
                 </span>
               </div>
             </div>
 
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 text-red-700 rounded-md">
+              <div className="error-message">
                 <div className="flex">
                   <span className="mr-2">❌</span>
                   <span className="text-sm">{error}</span>
@@ -237,26 +255,26 @@ const EncryptDecryptTool = () => {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row justify-between gap-3">
+            <div className="flex-col justify-between gap-3">
               <button
                 type="button"
                 onClick={handleClear}
-                className="px-6 py-3 border-2 border-rose-200 rounded-lg shadow-sm text-sm font-medium text-rose-600 bg-gradient-to-r from-rose-50 to-pink-50 hover:from-rose-100 hover:to-pink-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-300 transition-all duration-200"
+                className="btn-clear"
               >
                 🗑️ Xóa
               </button>
-              <div className="flex gap-3">
+              <div className="flex-gap">
                 <button
                   type="button"
                   onClick={handleEncrypt}
-                  className="min-w-[150px] flex-1 px-6 py-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-400 to-indigo-500 hover:from-blue-500 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-all duration-200"
+                  className="btn-encrypt"
                 >
                   🔒 Mã hóa
                 </button>
                 <button
                   type="button"
                   onClick={handleDecrypt}
-                  className="min-w-[150px] flex-1 px-6 py-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-400 transition-all duration-200"
+                  className="btn-decrypt"
                 >
                   🔓 Giải mã
                 </button>
@@ -265,10 +283,10 @@ const EncryptDecryptTool = () => {
           </div>
 
           {/* Right Column - Output Result */}
-          <div className="bg-white shadow-xl rounded-xl border border-gray-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-8 py-6 border-b border-gray-200">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold text-gray-800 flex items-center">
+          <div className="result-card">
+            <div className="result-header">
+              <div className="flex-between">
+                <h2 className="text-2xl font-semibold flex-center">
                   <span className="mr-2">📋</span>
                   Kết quả
                 </h2>
@@ -276,35 +294,35 @@ const EncryptDecryptTool = () => {
                   <button
                     type="button"
                     onClick={handleCopy}
-                    className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="btn-copy"
                   >
-                    📄 Sao chép
+                    📋 Sao chép
                   </button>
                 )}
               </div>
             </div>
             
-            <div className="p-6 md:p-8">
+            <div className="p-6">
               {outputText ? (
                 <div className="space-y-4">
                   {/* Result Type Indicator */}
-                  <div className="flex items-center justify-between">
-                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  <div className="flex-between">
+                    <div className={`format-badge ${
                       isValidJson(outputText) 
-                        ? 'bg-green-100 text-green-700 border border-green-200' 
-                        : 'bg-gray-100 text-gray-700 border border-gray-200'
+                        ? 'format-badge-json' 
+                        : 'format-badge-gray'
                     }`}>
                       {isValidJson(outputText) ? '🎯 JSON Format' : '📝 Text Format'}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs">
                       {outputText.length} ký tự
                     </div>
                   </div>
                   
                   {/* JSON Viewer or Text Display */}
-                  <div className="border-2 border-gray-200 rounded-xl overflow-hidden max-h-96">
+                  <div className="output-container">
                     {isValidJson(outputText) ? (
-                      <div className="bg-white max-h-96 overflow-y-auto">
+                      <div className="json-viewer">
                         <JsonView 
                           value={JSON.parse(outputText)}
                           style={{
@@ -319,49 +337,29 @@ const EncryptDecryptTool = () => {
                         />
                       </div>
                     ) : (
-                      <div className="bg-gray-900 text-gray-100 p-6 max-h-96 overflow-y-auto">
+                      <div className="text-output">
                         <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed font-mono">
                           {outputText}
                         </pre>
                       </div>
                     )}
                   </div>
-                  
-                  {/* Quick Actions */}
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <button
-                      onClick={handleCopy}
-                      className="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
-                    >
-                      📋 Copy
-                    </button>
-                    {isValidJson(outputText) && (
-                      <button
-                        onClick={() => {
-                          const formatted = JSON.stringify(JSON.parse(outputText), null, 2);
-                          navigator.clipboard.writeText(formatted);
-                        }}
-                        className="px-3 py-1 text-xs bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors border border-green-200"
-                      >
-                        🎨 Copy Formatted
-                      </button>
-                    )}
-                  </div>
+
                 </div>
               ) : (
-                <div className="text-center py-16 text-gray-500">
-                  <div className="text-7xl mb-6 animate-pulse">📄</div>
-                  <h3 className="text-xl font-medium text-gray-700 mb-2">Kết quả sẽ hiển thị ở đây</h3>
-                  <p className="text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
+                <div className="empty-state">
+                  <div className="empty-state-icon">📄</div>
+                  <h3 className="empty-state-title">Kết quả sẽ hiển thị ở đây</h3>
+                  <p className="empty-state-description">
                     Nhập văn bản hoặc JSON vào ô bên trái, sau đó nhấn <strong>Mã hóa</strong> hoặc <strong>Giải mã</strong> để xem kết quả
                   </p>
-                  <div className="mt-6 flex justify-center space-x-4 text-xs text-gray-400">
-                    <span className="flex items-center">
-                      <span className="w-2 h-2 bg-blue-300 rounded-full mr-1"></span>
+                  <div className="mt-6 justify-center space-x-4 text-xs flex">
+                    <span className="flex-center">
+                      <span className="status-indicator status-blue"></span>
                       AES-256 Encryption
                     </span>
-                    <span className="flex items-center">
-                      <span className="w-2 h-2 bg-green-300 rounded-full mr-1"></span>
+                    <span className="flex-center">
+                      <span className="status-indicator status-green"></span>
                       JSON Support
                     </span>
                   </div>
@@ -370,6 +368,13 @@ const EncryptDecryptTool = () => {
             </div>
           </div>
         </div>
+        
+        {/* Toast Notification */}
+        <Toast 
+          show={showToast} 
+          message="Đã sao chép thành công!" 
+          type="success" 
+        />
       </div>
     </div>
   );
