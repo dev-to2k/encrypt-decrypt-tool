@@ -1,7 +1,7 @@
 import JsonView from '@uiw/react-json-view';
 import CryptoJS from 'crypto-js';
 import { useState } from 'react';
-import Toast from './Toast';
+import { toastService } from '../services/toastService';
 import './encryp-decrypt-tool.css';
 
 const EncryptDecryptTool = () => {
@@ -9,23 +9,26 @@ const EncryptDecryptTool = () => {
   const [outputText, setOutputText] = useState('');
   const [secretKey, setSecretKey] = useState('Generali@EDMAPI#');
   const [error, setError] = useState('');
-  const [showToast, setShowToast] = useState(false);
+  const [inputCopied, setInputCopied] = useState(false);
+
 
   const handleEncrypt = () => {
     try {
       if (!inputText.trim()) {
         setError('Vui lòng nhập văn bản cần mã hóa');
+        toastService.show({ message: 'Vui lòng nhập văn bản cần mã hóa', type: 'error' });
         return;
       }
-      
+
       if (!secretKey.trim()) {
         setError('Vui lòng nhập khóa bí mật');
+        toastService.show({ message: 'Vui lòng nhập khóa bí mật', type: 'error' });
         return;
       }
-      
+
       // Parse key như trong Angular service
       const key = CryptoJS.enc.Utf8.parse(secretKey);
-      
+
       // Thử parse JSON, nếu không thành công thì dùng như string
       let textToEncrypt;
       try {
@@ -34,20 +37,22 @@ const EncryptDecryptTool = () => {
       } catch {
         textToEncrypt = inputText.trim();
       }
-      
+
       // Encrypt với mode ECB và padding PKCS7
       const encrypted = CryptoJS.AES.encrypt(JSON.stringify(textToEncrypt), key, {
         mode: CryptoJS.mode.ECB,
         padding: CryptoJS.pad.Pkcs7
       });
-      
+
       // Trả về ciphertext dưới dạng Base64
       const result = encrypted.ciphertext.toString(CryptoJS.enc.Base64);
       setOutputText(result);
       setError('');
+      toastService.show({ message: 'Mã hóa thành công!', type: 'success' });
     } catch (err) {
       if (err instanceof Error) {
         setError('Đã xảy ra lỗi khi mã hóa: ' + err.message);
+        toastService.show({ message: 'Lỗi mã hóa: ' + err.message, type: 'error' });
       } else {
         setError('Đã xảy ra lỗi không xác định khi mã hóa.');
       }
@@ -58,66 +63,66 @@ const EncryptDecryptTool = () => {
     try {
       if (!inputText.trim()) {
         setError('Vui lòng nhập văn bản cần giải mã');
+        toastService.show({ message: 'Vui lòng nhập văn bản cần giải mã', type: 'error' });
         return;
       }
-      
+
       if (!secretKey.trim()) {
         setError('Vui lòng nhập khóa bí mật');
+        toastService.show({ message: 'Vui lòng nhập khóa bí mật', type: 'error' });
         return;
       }
-      
+
       // Parse key như trong Angular service
       const key = CryptoJS.enc.Utf8.parse(secretKey);
-      
+
       // Loại bỏ khoảng trắng
       const cleanedInput = inputText.replace(/\s+/g, '');
-      
+
       // Kiểm tra định dạng Base64
       const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
       if (!base64Regex.test(cleanedInput)) {
         setError('Định dạng văn bản mã hóa không hợp lệ. Vui lòng kiểm tra lại.');
+        toastService.show({ message: 'Định dạng văn bản mã hóa không hợp lệ', type: 'error' });
         return;
       }
-      
+
       // Tạo CipherParams object từ chuỗi Base64
       const wordArray = CryptoJS.enc.Base64.parse(cleanedInput);
       const cipherParams = CryptoJS.lib.CipherParams.create({
         ciphertext: wordArray
       });
-      
+
       // Thực hiện giải mã với mode ECB và padding PKCS7
       const decrypted = CryptoJS.AES.decrypt(cipherParams, key, {
         mode: CryptoJS.mode.ECB,
         padding: CryptoJS.pad.Pkcs7
       });
-      
+
       // Chuyển đổi kết quả thành chuỗi UTF-8
       const decryptedText = decrypted.toString(CryptoJS.enc.Utf8);
-      
+
       if (!decryptedText) {
         throw new Error('Không thể giải mã. Khóa bí mật có thể không chính xác.');
       }
-      
+
       // Thử parse JSON để format đẹp hơn
       try {
         const parsed = JSON.parse(decryptedText);
-        if (typeof parsed === 'string') {
-          setOutputText(parsed);
-        } else {
-          setOutputText(JSON.stringify(parsed, null, 2));
-        }
+        setOutputText(JSON.stringify(parsed, null, 2));
       } catch {
-        // Nếu không phải JSON, hiển thị như chuỗi thông thường
         setOutputText(decryptedText);
       }
-      
+
       setError('');
+      toastService.show({ message: 'Giải mã thành công!', type: 'success' });
     } catch (err) {
       if (err instanceof Error) {
         if (err.message.includes('Malformed UTF-8')) {
           setError('Lỗi giải mã: Dữ liệu không hợp lệ hoặc khóa bí mật sai. Vui lòng kiểm tra lại.');
         } else {
           setError('Đã xảy ra lỗi khi giải mã: ' + err.message);
+        toastService.show({ message: 'Lỗi giải mã: ' + err.message, type: 'error' });
         }
       } else {
         setError('Đã xảy ra lỗi không xác định khi giải mã.');
@@ -130,17 +135,16 @@ const EncryptDecryptTool = () => {
   const handleCopy = async () => {
     try {
       let textToCopy = outputText;
-      
+
       // Nếu là JSON, format đẹp hơn
       if (isValidJson(outputText)) {
         textToCopy = JSON.stringify(JSON.parse(outputText), null, 2);
       }
-      
+
       await navigator.clipboard.writeText(textToCopy);
-      
+
       // Hiển thị toast
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+      toastService.show({ message: 'Đã sao chép thành công!', type: 'success' });
     } catch (err) {
       console.error('Lỗi khi copy:', err);
     }
@@ -181,7 +185,7 @@ const EncryptDecryptTool = () => {
               <span className="mr-2">⚙️</span>
               Cấu hình
             </h2>
-            
+
             <div className="mb-6">
               <label htmlFor="secretKey" className="block text-sm font-semibold mb-3">
                 🔑 Khóa bí mật
@@ -218,15 +222,32 @@ const EncryptDecryptTool = () => {
                   className="text-input rows-10"
                   placeholder="Nhập văn bản, JSON hoặc dữ liệu cần mã hóa/giải mã..."
                 />
-                <div className="absolute top-3 right-3">
+                <div className="absolute top-3 right-3 flex gap-2">
                   {inputText && (
-                    <div className={`format-badge ${
-                      isValidJson(inputText) 
-                        ? 'format-badge-json' 
-                        : 'format-badge-text'
-                    }`}>
-                      {isValidJson(inputText) ? '✓ JSON' : '📄 Text'}
-                    </div>
+                    <>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(inputText);
+                            setInputCopied(true);
+                            setTimeout(() => setInputCopied(false), 2000);
+                          } catch (err) {
+                            console.error('Lỗi khi copy:', err);
+                          }
+                        }}
+                        className="copy-icon-btn"
+                        title="Copy to clipboard"
+                      >
+                        {inputCopied ? '✅' : '📋'}
+                      </button>
+                      <div className={`format-badge ${isValidJson(inputText)
+                          ? 'format-badge-json'
+                          : 'format-badge-text'
+                        }`}>
+                        {isValidJson(inputText) ? '✓ JSON' : '📄 Text'}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -301,29 +322,28 @@ const EncryptDecryptTool = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="p-6">
               {outputText ? (
                 <div className="space-y-4">
                   {/* Result Type Indicator */}
                   <div className="flex-between">
-                    <div className={`format-badge ${
-                      isValidJson(outputText) 
-                        ? 'format-badge-json' 
+                    <div className={`format-badge ${isValidJson(outputText)
+                        ? 'format-badge-json'
                         : 'format-badge-gray'
-                    }`}>
+                      }`}>
                       {isValidJson(outputText) ? '🎯 JSON Format' : '📝 Text Format'}
                     </div>
                     <div className="text-xs">
                       {outputText.length} ký tự
                     </div>
                   </div>
-                  
+
                   {/* JSON Viewer or Text Display */}
                   <div className="output-container">
                     {isValidJson(outputText) ? (
                       <div className="json-viewer">
-                        <JsonView 
+                        <JsonView
                           value={JSON.parse(outputText)}
                           style={{
                             backgroundColor: 'transparent',
@@ -368,13 +388,8 @@ const EncryptDecryptTool = () => {
             </div>
           </div>
         </div>
-        
-        {/* Toast Notification */}
-        <Toast 
-          show={showToast} 
-          message="Đã sao chép thành công!" 
-          type="success" 
-        />
+
+
       </div>
     </div>
   );
